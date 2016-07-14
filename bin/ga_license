@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+require 'json'
+
+def get_options
+  file = File.open(File.join(ENV['HOME'], '/.ga_license'), 'rb')
+  options = JSON.parse(file.read)
+end
+
+def clone_and_cd(clone_url)
+  system("git clone #{clone_url}")
+  regex = /.+\/(.+)\.git/.match(clone_url)
+  Dir.chdir(regex[1])
+end
+
+def add_license
+  File.open("README.md",  "a") do |f|
+    f << "\n\n## Licensing"
+    f << "\nAll content is licensed under a CC­BY­NC­SA 4.0 license."
+    f << "\nAll software code is licensed under GNU GPLv3. For commercial use or alternative licensing, please contact legal@ga.co."
+  end
+end
+
+def write_license(description, copyright)
+  file = File.open(File.join( File.dirname(__FILE__), '../files/LICENSE.txt'), "rb")
+  contents = file.read
+  contents.force_encoding(Encoding::UTF_8)
+
+  contents.gsub!("ENV_DESCRIPTION", description)
+  contents.gsub!("ENV_COPYRIGHT", copyright)
+
+  File.open("LICENSE.txt", 'w+'){ |f| f.write(contents) }
+end
+
+def add_commit_push
+  system("git add .")
+  system("git commit -am 'Add GA license'")
+  system("git push")
+end
+
+if ARGV[0] == "configure"
+  puts "Description:"
+  description = STDIN.gets.strip
+  puts "Copyright:"
+  copyright = STDIN.gets.strip
+  File.open(File.join(ENV['HOME'], '/.ga_license'), 'w+') do |f|
+    options = {description: description, copyright: copyright}
+    f.write(options.to_json)
+  end
+else
+  options = get_options
+  puts options
+  clone_and_cd(ARGV[0])
+  add_license
+  write_license(options["description"], options["copyright"])
+  add_commit_push
+end
